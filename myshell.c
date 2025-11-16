@@ -18,6 +18,32 @@ int main()
 		printf("myshell>>");
 		fgets(comando, sizeof(comando), stdin);
 		comando[strcspn(comando, "\n")] = '\0';
+		int k = strlen(comando) - 1, background = 0;
+		
+		
+		do {
+			if(comando[k] != ' '){
+				break;
+			}
+
+			k--; // decrementa o k para verificar o próximo caractere à esquerda, para verificar se tem espaço
+		}while (k >= 0);
+
+		if(comando[k] == '&'){
+			background = 1;
+			comando [k] = '\0'; // remove o & do comando
+		}
+
+		char * comando2 = strrchr(comando, '|'); // procura o caractere pipe no comando
+
+		char *comando_pipe = NULL;
+
+		if(comando2 != NULL){
+			*comando2 = '\0';
+			comando_pipe = comando2 + 1; // aqui pega o comando depois do pipe, usar essa variável para o próximo comando
+		}
+		
+
 
 		// processamento do comando, sendo necessário quebrá-lo em partes
 		int j = 0;
