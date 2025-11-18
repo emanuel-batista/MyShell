@@ -16,6 +16,7 @@ int main()
         char comando[100];
         const char delimitador[] = " "; // delimitador para pegar espaço que o usuário digitar
         char *args[10];                 // delimitado a quantidade de argumentos na função
+        char *args_pipe[10]; 
         char *token;
         printf("myshell>>");
         fgets(comando, sizeof(comando), stdin);
@@ -41,6 +42,16 @@ int main()
         if (comando2 != NULL) {
             *comando2 = '\0';
             comando_pipe = comando2 + 1; // aqui pega o comando depois do pipe, usar essa variável para o próximo comando
+        }
+
+        int j_pipe = 0;
+        if (comando_pipe != NULL) {
+            char *token2 = strtok(comando_pipe, " ");
+            while (token2 != NULL) {
+                args_pipe[j_pipe++] = token2;
+                token2 = strtok(NULL, " ");
+            }
+            args_pipe[j_pipe] = NULL;
         }
 
         // ==========================================================
@@ -83,11 +94,6 @@ int main()
             redirect_file = p;      // arquivo
         }
 
-
-        // printf("[DEBUG] redirect_type = %d\n", redirect_type);
-        // if (redirect_file != NULL) {
-        //     printf("[DEBUG] redirect_file = '%s'\n", redirect_file);
-        // }
         
         // ==========================================================
 
@@ -131,6 +137,47 @@ int main()
         }
         else
         {
+             if (comando_pipe != NULL) {
+
+                int fd[2];
+                pipe(fd);
+
+                pid_t pid_esq = fork();
+
+                if (pid_esq == 0) {
+                    // Filho da esquerda: escreve no pipe
+                    dup2(fd[1], STDOUT_FILENO);
+                    close(fd[0]);
+                    close(fd[1]);
+
+                    execvp(args[0], args);
+                    perror("myshell");
+                    exit(1);
+                }
+
+                pid_t pid_dir = fork();
+                if (pid_dir == 0) {
+                    // Filho da direita: lê do pipe
+                    dup2(fd[0], STDIN_FILENO);
+                    close(fd[1]);
+                    close(fd[0]);
+
+                    execvp(args_pipe[0], args_pipe);
+                    perror("myshell");
+                    exit(1);
+                }
+
+                // Pai fecha pipe
+                close(fd[0]);
+                close(fd[1]);
+
+                waitpid(pid_esq, NULL, 0);
+                waitpid(pid_dir, NULL, 0);
+
+                continue; // volta pro loop principal
+            }
+
+
             pid_t pid = fork();
             if (pid < 0)
             {
@@ -190,7 +237,11 @@ int main()
             }
             else
             {
-                wait(NULL);
+                if (!background) {
+                    waitpid(pid, NULL, 0);
+                } else {
+                    printf("[Processo %d rodando em background]\n", pid);
+                }
             }
         }
     }
