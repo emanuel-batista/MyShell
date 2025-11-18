@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h> 
+#include <sys/stat.h>
 
 int main()
 {
@@ -136,6 +138,50 @@ int main()
             }
             else if (pid == 0)
             {
+                //PAULO COMEÇOU AQUI
+                if (redirect_type != 0)
+                {
+                    int fd; // File descriptor
+
+                    if (redirect_type == 1)
+                    { // > (Saída, Truncar)
+                        // Abre o arquivo para escrita, cria se não existir, e trunca (apaga) se existir.
+                        fd = open(redirect_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                    }
+                    else if (redirect_type == 2)
+                    { // >> (Saída, Anexar)
+                        // Abre o arquivo para escrita, cria se não existir, e anexa no final.
+                        fd = open(redirect_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
+                    }
+                    else if (redirect_type == 3)
+                    { // < (Entrada)
+                        // Abre o arquivo apenas para leitura.
+                        fd = open(redirect_file, O_RDONLY);
+                    }
+
+                    // Se open() falhar, fd será -1
+                    if (fd < 0)
+                    {
+                        perror("myshell: open");
+                        exit(EXIT_FAILURE); // Sai do processo filho se não conseguir abrir o arquivo
+                    }
+
+                    // Redireciona a entrada ou saída
+                    if (redirect_type == 1 || redirect_type == 2)
+                    {
+                        // dup2 faz o STDOUT_FILENO (fd 1, saída padrão) apontar para o nosso arquivo (fd)
+                        dup2(fd, STDOUT_FILENO);
+                    }
+                    else if (redirect_type == 3)
+                    {
+                        // dup2 faz o STDIN_FILENO (fd 0, entrada padrão) apontar para o nosso arquivo (fd)
+                        dup2(fd, STDIN_FILENO);
+                    }
+
+                    // Depois que o redirecionamento é feito, o fd original pode ser fechado.
+                    close(fd);
+                }
+                //PAULO TERMINOU AQUI
                 if (execvp(args[0], args) == -1)
                 { // Esta parte do código SÓ executa se o comando não for encontrado.
                     perror("myshell");
